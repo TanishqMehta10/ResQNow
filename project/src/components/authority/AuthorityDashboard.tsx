@@ -37,7 +37,7 @@ import { sampleZones } from '../../utils/geofence';
 const AuthorityDashboard = () => {
   const navigate = useNavigate();
   const { t, language, setLanguage } = useLanguage();
-  const [activeAlerts, setActiveAlerts] = useState(12);
+  const [activeAlerts, setActiveAlerts] = useState(3);
   const [selectedTimeRange, setSelectedTimeRange] = useState('24h');
   const [emergencyVideos, setEmergencyVideos] = useState(() => {
     // Load emergency videos from localStorage
@@ -83,6 +83,7 @@ const AuthorityDashboard = () => {
   const [sendAlertOpen, setSendAlertOpen] = useState(false);
   const [broadcastOpen, setBroadcastOpen] = useState(false);
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
+  const [efirOpen, setEfirOpen] = useState(false);
   const [alertTitle, setAlertTitle] = useState('');
   const [alertMessage, setAlertMessage] = useState('');
   const [alertType, setAlertType] = useState('General');
@@ -193,12 +194,25 @@ const AuthorityDashboard = () => {
       const updatedVideos = [videoData, ...emergencyVideos];
       localStorage.setItem('emergencyVideos', JSON.stringify(updatedVideos));
     };
-    
+    // Listen for EFIR submissions from tourist side
+    const onEFIR = (record: any) => {
+      try {
+        const existing = JSON.parse(localStorage.getItem('efirs') || '[]');
+        const found = existing.find((r: any) => r.id === record.id);
+        if (!found) {
+          existing.unshift(record);
+          localStorage.setItem('efirs', JSON.stringify(existing));
+        }
+      } catch {}
+      setActiveAlerts((v)=>v+1);
+    };
+    bus.on('efir:submitted', onEFIR as any);
     bus.on('sos:triggered', onSos as any);
     bus.on('alert:geofence', onGeo as any);
     bus.on('emergencyVideo', onEmergencyVideo);
     
     return () => {
+      bus.off('efir:submitted', onEFIR as any);
       bus.off('sos:triggered', onSos as any);
       bus.off('alert:geofence', onGeo as any);
       bus.off('emergencyVideo', onEmergencyVideo);
@@ -291,6 +305,18 @@ const AuthorityDashboard = () => {
     navigate('/');
   };
 
+  // Load authority user name from localStorage
+  const authorityName = (() => {
+    try {
+      const raw = localStorage.getItem('authorityUser');
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      return parsed.name || null;
+    } catch {
+      return null;
+    }
+  })();
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-blue-50">
       {/* Enhanced Header */}
@@ -353,8 +379,7 @@ const AuthorityDashboard = () => {
                     <User className="w-6 h-6 text-white" />
                   </div>
                   <div className="hidden md:block">
-                    <p className="text-sm font-bold text-gray-800">Officer Smith</p>
-                    <p className="text-xs text-gray-500">Police Authority • Badge #1234</p>
+                    <p className="text-sm font-bold text-gray-800">{authorityName || 'Authority User'}</p>
                   </div>
                 </div>
                 
@@ -379,7 +404,7 @@ const AuthorityDashboard = () => {
             <Zap className="w-5 h-5 text-gray-700" />
             <h3 className="text-xl font-bold text-gray-900">Quick Actions</h3>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-5">
             <button onClick={() => mapRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })} className="rounded-xl px-6 py-6 bg-blue-600 hover:bg-blue-700 text-white shadow-lg transition flex items-center justify-center">
               <Map className="w-5 h-5 mr-2" />
               <span>Live Map View</span>
@@ -396,6 +421,10 @@ const AuthorityDashboard = () => {
               <Bell className="w-5 h-5 mr-2" />
               <span>Send Alert</span>
             </button>
+            <button onClick={() => setEfirOpen(true)} className="rounded-xl px-6 py-6 bg-red-600 hover:bg-red-700 text-white shadow-lg transition flex items-center justify-center">
+              <Video className="w-5 h-5 mr-2" />
+              <span>E‑FIR Inbox</span>
+            </button>
           </div>
         </div>
 
@@ -404,7 +433,7 @@ const AuthorityDashboard = () => {
           {[
             { 
               title: t('activeTourists'), 
-              value: '2,847', 
+              value: '24', 
               change: '+12%', 
               icon: Users, 
               color: 'blue',
@@ -420,7 +449,7 @@ const AuthorityDashboard = () => {
             },
             { 
               title: t('safeZones'), 
-              value: '18', 
+              value: '6', 
               change: '+2', 
               icon: Shield, 
               color: 'green',
@@ -568,6 +597,45 @@ const AuthorityDashboard = () => {
 
           {/* Right Column - Emergency Alerts & Monitoring */}
           <div className="space-y-8">
+            {/* E-FIR Review Panel */}
+            <div className="bg-white/90 backdrop-blur-lg rounded-2xl shadow-xl border border-white/20 overflow-hidden">
+              <div className="px-6 py-4 bg-gradient-to-r from-gray-700 to-gray-900 text-white">
+                <div className="text-xl font-bold flex items-center"><Shield className="w-5 h-5 mr-2" /> E‑FIR Review Queue</div>
+              </div>
+              <div className="p-4 space-y-3 max-h-[28rem] overflow-y-auto">
+                {(JSON.parse(localStorage.getItem('efirs') || '[]') as any[]).slice(0,10).map((r) => (
+                  <div key={r.id} className="bg-white rounded-xl border border-gray-200 p-4">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <div className="font-semibold text-gray-900">{r.type} • {r.touristName} ({r.touristId})</div>
+                        <div className="text-sm text-gray-600">{new Date(r.timestamp).toLocaleString()}</div>
+                        <div className="text-sm text-gray-600 flex items-center gap-1 mt-1"><MapPin className="w-4 h-4" />{r.location ? `${r.location.lat.toFixed(4)}, ${r.location.lng.toFixed(4)}` : 'Location not available'}</div>
+                        <div className="text-sm text-gray-700 mt-2 line-clamp-2">{r.description}</div>
+                        {r.evidenceLogs?.length > 0 && (
+                          <div className="mt-2 text-xs text-gray-500">Evidence: {r.evidenceLogs.length} file(s)</div>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button className="px-3 py-2 rounded-lg border" onClick={() => { setSelectedVideo({ videoUrl: r.evidenceLogs?.[0]?.url, touristName: r.touristName, touristId: r.touristId, timestamp: r.timestamp, status: 'pending', location: r.location || { lat: 0, lng: 0 } }); setVideoModalOpen(true); }}>View Evidence</button>
+                        <button className="px-3 py-2 rounded-lg bg-green-600 text-white" onClick={() => {
+                          const all = JSON.parse(localStorage.getItem('efirs') || '[]');
+                          const idx = all.findIndex((x: any)=>x.id===r.id);
+                          if (idx>-1) { all[idx].status = 'confirmed'; localStorage.setItem('efirs', JSON.stringify(all)); }
+                          setActiveAlerts((v)=> Math.max(0, v-1));
+                        }}>Confirm</button>
+                        <button className="px-3 py-2 rounded-lg bg-red-100 text-red-700" onClick={() => {
+                          const all = JSON.parse(localStorage.getItem('efirs') || '[]');
+                          localStorage.setItem('efirs', JSON.stringify(all.filter((x: any)=>x.id!==r.id)));
+                        }}>Reject</button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {((JSON.parse(localStorage.getItem('efirs') || '[]') as any[]).length === 0) && (
+                  <div className="text-center text-gray-500 py-6">No E‑FIRs submitted</div>
+                )}
+              </div>
+            </div>
             {/* Emergency Alerts & Monitoring */}
             <div ref={alertsRef} className="bg-white/90 backdrop-blur-lg rounded-2xl shadow-xl border border-white/20 overflow-hidden">
               <div className="px-6 py-4 bg-gradient-to-r from-red-600 to-orange-600 text-white">

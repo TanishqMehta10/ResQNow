@@ -12,13 +12,27 @@ const TouristSignup = () => {
     email: '',
     phone: '',
     nationality: '',
+    guardianName: '',
+    guardianPhone: '',
     password: '',
     confirmPassword: ''
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle signup logic here
+    // Persist basic signup details for use in KYC and Digital ID
+    const existing = localStorage.getItem('mockTourist');
+    const existingData = existing ? JSON.parse(existing) : {};
+    const toStore = {
+      ...existingData,
+      name: formData.name,
+      email: formData.email,
+      phone: formData.phone,
+      nationality: formData.nationality,
+      guardianName: formData.guardianName,
+      guardianPhone: formData.guardianPhone,
+    };
+    localStorage.setItem('mockTourist', JSON.stringify(toStore));
     navigate('/tourist/kyc');
   };
 
@@ -131,6 +145,38 @@ const TouristSignup = () => {
                     <option value="Australian">Australian</option>
                     <option value="Other">Other</option>
                   </select>
+                </div>
+              </div>
+
+              {/* Guardian Details */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Guardian Name</label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type="text"
+                      name="guardianName"
+                      value={formData.guardianName}
+                      onChange={handleInputChange}
+                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
+                      placeholder="Enter guardian name"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Guardian Phone</label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type="tel"
+                      name="guardianPhone"
+                      value={formData.guardianPhone}
+                      onChange={handleInputChange}
+                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
+                      placeholder="Enter guardian phone"
+                    />
+                  </div>
                 </div>
               </div>
 

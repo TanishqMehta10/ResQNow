@@ -8,7 +8,16 @@ type Props = {
 };
 
 export default function EFIRPanel({ open, onClose }: Props) {
-  const userId = useMemo(() => 'T001234', []);
+  const userId = useMemo(() => {
+    try {
+      const raw = localStorage.getItem('mockTourist');
+      if (!raw) return 'T001234';
+      const parsed = JSON.parse(raw);
+      return parsed.id || 'T001234';
+    } catch {
+      return 'T001234';
+    }
+  }, []);
   const lastPosition = useRealtimeStore((s) => s.tourists[userId]?.lastPosition);
   const [form, setForm] = useState({
     type: 'Theft',
@@ -23,9 +32,38 @@ export default function EFIRPanel({ open, onClose }: Props) {
       alert('Please describe the incident.');
       return;
     }
-    // Placeholder: In production, POST this to backend for e-FIR creation
-    console.log('E-FIR submitted', { ...form, position: lastPosition });
-    alert('E-FIR submitted successfully. You will receive a reference number via SMS/Email.');
+    // Build E-FIR record and persist locally for authority dashboard
+    try {
+      const timestamp = Date.now();
+      const touristRaw = localStorage.getItem('mockTourist');
+      const tourist = touristRaw ? JSON.parse(touristRaw) : { id: userId, name: 'Tourist', email: 'guest@example.com', phone: '', nationality: '' };
+      const allVideos = JSON.parse(localStorage.getItem('emergencyVideos') || '[]');
+      const recentVideos = allVideos.filter((v: any) => v.touristId === (tourist.id || userId) && timestamp - v.timestamp < 1000 * 60 * 60);
+      const record = {
+        id: `FIR${timestamp}`,
+        touristId: tourist.id || userId,
+        touristName: tourist.name || 'Tourist',
+        touristEmail: tourist.email || '',
+        touristPhone: tourist.phone || '',
+        touristNationality: tourist.nationality || '',
+        type: form.type,
+        date: form.date,
+        description: form.description.trim(),
+        timestamp,
+        location: lastPosition || null,
+        evidenceLogs: recentVideos.map((v: any) => ({ id: v.id, type: 'video', url: v.videoUrl, timestamp: v.timestamp })),
+        status: 'pending' as const,
+      };
+      const existing = JSON.parse(localStorage.getItem('efirs') || '[]');
+      existing.unshift(record);
+      localStorage.setItem('efirs', JSON.stringify(existing));
+      // Notify authority dashboard in real time
+      try { (window as any).bus?.emit('efir:submitted', record); } catch {}
+      alert('E-FIR drafted and sent for review. You will receive confirmation soon.');
+    } catch (e) {
+      console.error('EFIR submit failed', e);
+      alert('Failed to submit E-FIR. Please try again.');
+    }
     onClose();
   };
 

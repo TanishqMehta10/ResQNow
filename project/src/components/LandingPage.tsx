@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Shield, Users, MapPin, AlertTriangle, Zap, Globe, Eye, Heart, Star, ArrowRight, Play, CheckCircle, TrendingUp, Award, Clock, Target, BarChart3, Smartphone, Lock, Wifi } from 'lucide-react';
+import { Shield, Users, MapPin, AlertTriangle, Zap, Globe, Eye, Heart, Star, ArrowRight, Play, CheckCircle, TrendingUp, Award, Clock, Target, BarChart3, Smartphone, Lock, Wifi, Video, Megaphone } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 
 const LandingPage = () => {
@@ -22,8 +22,6 @@ const LandingPage = () => {
             <div className="hidden md:flex items-center space-x-8">
               <a href="#features" className="text-gray-600 hover:text-blue-600 font-medium transition-colors">Features</a>
               <a href="#solutions" className="text-gray-600 hover:text-blue-600 font-medium transition-colors">Solutions</a>
-              <a href="#pricing" className="text-gray-600 hover:text-blue-600 font-medium transition-colors">Pricing</a>
-              <a href="#contact" className="text-gray-600 hover:text-blue-600 font-medium transition-colors">Contact</a>
             </div>
 
             <div className="flex items-center space-x-4">
@@ -118,33 +116,33 @@ const LandingPage = () => {
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-green-50 p-4 rounded-lg">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <Shield className="w-5 h-5 text-green-600" />
-                        <span className="text-sm font-medium text-green-800">Safe Zones</span>
+                    <div className="bg-red-50 p-4 rounded-lg">
+                      <div className="flex items-center space-x-2 mb-1">
+                        <Video className="w-5 h-5 text-red-600" />
+                        <span className="text-sm font-medium text-red-800">Live Video Capture</span>
                       </div>
-                      <div className="text-2xl font-bold text-green-900">2,847</div>
+                      <p className="text-xs text-red-900/80">Record and send emergency video instantly</p>
                     </div>
                     <div className="bg-blue-50 p-4 rounded-lg">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <Users className="w-5 h-5 text-blue-600" />
-                        <span className="text-sm font-medium text-blue-800">Active Tourists</span>
+                      <div className="flex items-center space-x-2 mb-1">
+                        <MapPin className="w-5 h-5 text-blue-600" />
+                        <span className="text-sm font-medium text-blue-800">Location Tracking</span>
                       </div>
-                      <div className="text-2xl font-bold text-blue-900">12,456</div>
-                    </div>
-                    <div className="bg-yellow-50 p-4 rounded-lg">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <AlertTriangle className="w-5 h-5 text-yellow-600" />
-                        <span className="text-sm font-medium text-yellow-800">Alerts</span>
-                      </div>
-                      <div className="text-2xl font-bold text-yellow-900">3</div>
+                      <p className="text-xs text-blue-900/80">Real-time GPS with safe-zone geofencing</p>
                     </div>
                     <div className="bg-purple-50 p-4 rounded-lg">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <TrendingUp className="w-5 h-5 text-purple-600" />
-                        <span className="text-sm font-medium text-purple-800">Response Rate</span>
+                      <div className="flex items-center space-x-2 mb-1">
+                        <Megaphone className="w-5 h-5 text-purple-600" />
+                        <span className="text-sm font-medium text-purple-800">Broadcast Messages</span>
                       </div>
-                      <div className="text-2xl font-bold text-purple-900">98.5%</div>
+                      <p className="text-xs text-purple-900/80">Send alerts and advisories to all tourists</p>
+                    </div>
+                    <div className="bg-green-50 p-4 rounded-lg">
+                      <div className="flex items-center space-x-2 mb-1">
+                        <Shield className="w-5 h-5 text-green-600" />
+                        <span className="text-sm font-medium text-green-800">Emergency SOS</span>
+                      </div>
+                      <p className="text-xs text-green-900/80">One‑tap help with auto location sharing</p>
                     </div>
                   </div>
                 </div>
@@ -413,7 +411,6 @@ const LandingPage = () => {
               <h4 className="font-semibold mb-4">Product</h4>
               <div className="space-y-2">
                 <a href="#" className="text-gray-400 hover:text-white transition-colors block">Features</a>
-                <a href="#" className="text-gray-400 hover:text-white transition-colors block">Pricing</a>
                 <a href="#" className="text-gray-400 hover:text-white transition-colors block">API</a>
                 <a href="#" className="text-gray-400 hover:text-white transition-colors block">Documentation</a>
               </div>
@@ -425,7 +422,6 @@ const LandingPage = () => {
                 <a href="#" className="text-gray-400 hover:text-white transition-colors block">About</a>
                 <a href="#" className="text-gray-400 hover:text-white transition-colors block">Blog</a>
                 <a href="#" className="text-gray-400 hover:text-white transition-colors block">Careers</a>
-                <a href="#" className="text-gray-400 hover:text-white transition-colors block">Contact</a>
               </div>
             </div>
 

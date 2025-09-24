@@ -5,6 +5,7 @@ type Events = {
   'location:update': { userId: string; position: { lat: number; lng: number }; timestamp: number };
   'alert:geofence': { userId: string; zoneId: string; level: 'enter' | 'exit'; timestamp: number };
   'broadcast:send': { id: string; title?: string; message: string; area?: string; severity?: 'Info' | 'Advisory' | 'Warning' | 'Critical'; timestamp: number };
+  'track:target': { userId: string; status: 'start' | 'stop'; reason?: string; timestamp: number };
 };
 
 type Handler<T> = (event: T) => void;
@@ -31,6 +32,14 @@ export type BroadcastMessage = { id: string; title?: string; message: string; ar
 export function emitBroadcast(payload: BroadcastMessage) {
   try {
     bus.emit('broadcast:send', payload);
+  } catch (e) {
+    // swallow for now
+  }
+}
+
+export function emitTrackTarget(payload: { userId: string; status: 'start' | 'stop'; reason?: string; timestamp: number }) {
+  try {
+    bus.emit('track:target', payload);
   } catch (e) {
     // swallow for now
   }

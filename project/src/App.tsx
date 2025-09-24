@@ -9,6 +9,7 @@ import TouristLogin from './components/tourist/TouristLogin';
 import TouristDashboard from './components/tourist/TouristDashboard';
 import AuthorityLogin from './components/authority/AuthorityLogin';
 import AuthorityDashboard from './components/authority/AuthorityDashboard';
+import PoliceDashboard from './components/authority/PoliceDashboard';
 import KYCVerification from './components/tourist/KYCVerification';
 import DigitalID from './components/tourist/DigitalID';
 
@@ -30,6 +31,11 @@ function App() {
             <Route path="/authority/dashboard" element={
               <ErrorBoundary>
                 <AuthorityDashboard />
+              </ErrorBoundary>
+            } />
+            <Route path="/police/dashboard" element={
+              <ErrorBoundary>
+                <PoliceDashboard />
               </ErrorBoundary>
             } />
           </Routes>

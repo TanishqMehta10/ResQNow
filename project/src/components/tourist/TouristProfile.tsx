@@ -1,15 +1,35 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { QrCode } from 'lucide-react';
 
 export default function TouristProfile() {
-  // Placeholder state for profile info
+  // Profile info sourced from localStorage, with fallbacks
   const [profile, setProfile] = useState({
     name: 'John Doe',
     email: 'john@example.com',
     nationality: 'Indian',
     digitalId: 'T001234',
+    guardianName: '',
+    guardianPhone: '',
     qr: 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=T001234',
   });
+
+  useEffect(() => {
+    const stored = localStorage.getItem('mockTourist');
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      const digitalId = parsed.id || 'T001234';
+      setProfile((prev) => ({
+        ...prev,
+        name: parsed.name || prev.name,
+        email: parsed.email || prev.email,
+        nationality: parsed.nationality || prev.nationality,
+        guardianName: parsed.guardianName || '',
+        guardianPhone: parsed.guardianPhone || '',
+        digitalId,
+        qr: `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(digitalId)}`,
+      }));
+    }
+  }, []);
 
   // Placeholder for update logic
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -31,6 +51,16 @@ export default function TouristProfile() {
         <div>
           <label className="block text-sm font-medium text-gray-700">Nationality</label>
           <input name="nationality" value={profile.nationality} onChange={handleChange} className="w-full border rounded-lg px-3 py-2 mt-1" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Guardian Name</label>
+            <input name="guardianName" value={profile.guardianName} onChange={handleChange} className="w-full border rounded-lg px-3 py-2 mt-1" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Guardian Phone</label>
+            <input name="guardianPhone" value={profile.guardianPhone} onChange={handleChange} className="w-full border rounded-lg px-3 py-2 mt-1" />
+          </div>
         </div>
         <div className="flex items-center gap-4 mt-4">
           <div>

@@ -14,6 +14,7 @@ const TouristDashboard = () => {
   // navigation not needed here
   const { language, setLanguage, t } = useLanguage();
   const [trackingOptIn, setTrackingOptIn] = useState(true);
+  const [touristName, setTouristName] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [eFirOpen, setEFirOpen] = useState(false);
   const [alertsOpen, setAlertsOpen] = useState(false);
@@ -24,20 +25,26 @@ const TouristDashboard = () => {
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [videoStream, setVideoStream] = useState<MediaStream | null>(null);
   const [videoRef, setVideoRef] = useState<HTMLVideoElement | null>(null);
-  const userId = useMemo(() => {
-    // Get mock tourist data from localStorage
+  const [userId, setUserId] = useState<string>(() => {
     const mockTourist = localStorage.getItem('mockTourist');
     if (mockTourist) {
       const touristData = JSON.parse(mockTourist);
-      return touristData.id;
+      return touristData.id || 'T001234';
     }
-    return 'T001234'; // fallback
-  }, []);
+    return 'T001234';
+  });
   const updateTourist = useRealtimeStore((s) => s.updateTourist);
   const currentUserId = useRealtimeStore((s) => s.currentUserId);
   const setCurrentUserId = useRealtimeStore((s) => s.setCurrentUserId);
 
   useEffect(() => {
+    // Load latest stored details (in case ID/name were set on Digital ID screen)
+    const mockTourist = localStorage.getItem('mockTourist');
+    if (mockTourist) {
+      const touristData = JSON.parse(mockTourist);
+      if (touristData.id && touristData.id !== userId) setUserId(touristData.id);
+      if (touristData.name) setTouristName(touristData.name);
+    }
     if (!currentUserId) setCurrentUserId(userId);
     updateTourist(userId, { safetyScore: 100 });
   }, [currentUserId, setCurrentUserId, updateTourist, userId]);
@@ -53,7 +60,19 @@ const TouristDashboard = () => {
       setTimeout(() => setToast(null), 4000);
     };
     bus.on('alert:geofence', handler);
-    return () => bus.off('alert:geofence', handler);
+    const onBroadcast = (m: any) => {
+      setToast({ text: `Broadcast: ${m.message}`, color: 'yellow' });
+      setTimeout(() => setToast(null), 4000);
+    };
+    const onTrack = (req: any) => {
+      if (req.userId === userId) {
+        setToast({ text: 'You are being monitored by authorities for safety.', color: 'yellow' });
+        setTimeout(() => setToast(null), 4000);
+      }
+    };
+    bus.on('broadcast:send', onBroadcast as any);
+    bus.on('track:target', onTrack as any);
+    return () => { bus.off('alert:geofence', handler); bus.off('broadcast:send', onBroadcast as any); bus.off('track:target', onTrack as any); };
   }, [t]);
 
   // Handle video element reference
@@ -217,7 +236,7 @@ const TouristDashboard = () => {
                   <User className="w-5 h-5 text-white" />
                 </div>
                 <div className="hidden md:block text-left">
-                  <p className="text-sm font-semibold text-gray-800">{t('guestName')}</p>
+                  <p className="text-sm font-semibold text-gray-800">{touristName || t('guestName')}</p>
                   <p className="text-xs text-gray-500">{t('touristId')} {userId}</p>
                 </div>
                 <Settings className="w-5 h-5 text-blue-600 ml-1" />
@@ -254,21 +273,21 @@ const TouristDashboard = () => {
               <Shield className="w-5 h-5 text-green-600" />
               <span className="font-semibold text-xl text-gray-800">{t('safetyStatus')}</span>
             </div>
-            <div className="flex items-center justify-between text-sm mt-2">
+            <div className="flex items-center justify-between text-lg mt-2">
               <span>{t('geoFenceStatus')}</span>
               <span className="flex items-center gap-1 px-2 py-1 rounded-full bg-green-100 text-green-700 font-medium">
                 <svg className="w-3 h-3 fill-green-500" viewBox="0 0 8 8"><circle cx="4" cy="4" r="4" /></svg>
                 {t('safeZone')}
               </span>
             </div>
-            <div className="flex items-center justify-between text-sm mt-1">
+            <div className="flex items-center justify-between text-lg mt-1">
               <span>{t('locationTracking')}</span>
               <span className="flex items-center gap-1 px-2 py-1 rounded-full bg-blue-100 text-blue-700 font-medium">
                 <svg className="w-3 h-3 fill-blue-500" viewBox="0 0 8 8"><circle cx="4" cy="4" r="4" /></svg>
                 {t('active')}
               </span>
             </div>
-            <div className="flex items-center justify-between text-sm mt-1">
+            <div className="flex items-center justify-between text-lg mt-1">
               <span>{t('emergencyConnection')}</span>
               <span className="flex items-center gap-1 px-2 py-1 rounded-full bg-green-100 text-green-700 font-medium">
                 <svg className="w-3 h-3 fill-green-500" viewBox="0 0 8 8"><circle cx="4" cy="4" r="4" /></svg>
@@ -282,12 +301,12 @@ const TouristDashboard = () => {
               <AlertTriangle className="w-5 h-5 text-orange-500" />
               <span className="font-semibold text-xl text-gray-800">{t('safetyAlerts')}</span>
             </div>
-            <div className="text-sm font-semibold text-gray-800">Heavy Rainfall Warning</div>
-            <div className="text-xs text-gray-500 mb-1">Shillong, Meghalaya</div>
-            <div className="text-sm font-semibold text-gray-800">Road Closure Notice</div>
-            <div className="text-xs text-gray-500 mb-1">Jorhat-Kaziranga Highway</div>
-            <div className="text-sm font-semibold text-gray-800">Overcrowding Alert</div>
-            <div className="text-xs text-gray-500">Majuli Island, Assam</div>
+            <div className="text-lg font-semibold text-gray-800">Heavy Rainfall Warning</div>
+            <div className="text-base text-gray-500 mb-1">Shillong, Meghalaya</div>
+            <div className="text-lg font-semibold text-gray-800">Road Closure Notice</div>
+            <div className="text-base text-gray-500 mb-1">Jorhat-Kaziranga Highway</div>
+            <div className="text-lg font-semibold text-gray-800">Overcrowding Alert</div>
+            <div className="text-base text-gray-500">Majuli Island, Assam</div>
           </div>
           {/* Live Emergency Video */}
           <div className="bg-white rounded-xl shadow p-6 flex flex-col gap-4">
@@ -396,11 +415,46 @@ const TouristDashboard = () => {
               </div>
               <div className="text-gray-600 mb-6">{t('selectEmergencyType')}</div>
               <div className="flex flex-col gap-3">
-                <button className="w-full flex items-center gap-2 justify-center bg-red-600 hover:bg-red-700 text-white font-semibold py-3 rounded-lg text-lg transition"><Shield className="w-5 h-5" /> {t('generalEmergency')}</button>
-                <button className="w-full flex items-center gap-2 justify-center bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg text-lg transition"><svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 21C12 21 4 13.5 4 8.5C4 5.46243 6.46243 3 9.5 3C11.1569 3 12 4.34315 12 4.34315C12 4.34315 12.8431 3 14.5 3C17.5376 3 20 5.46243 20 8.5C20 13.5 12 21 12 21Z" /><circle cx="12" cy="8.5" r="2.5" /></svg> {t('medicalEmergency')}</button>
-                <button className="w-full flex items-center gap-2 justify-center bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3 rounded-lg text-lg transition"><Shield className="w-5 h-5" /> {t('theftRobbery')}</button>
-                <button className="w-full flex items-center gap-2 justify-center bg-purple-500 hover:bg-purple-600 text-white font-semibold py-3 rounded-lg text-lg transition"><AlertTriangle className="w-5 h-5" /> {t('harassmentAssault')}</button>
-                <button className="w-full flex items-center gap-2 justify-center bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-3 rounded-lg text-lg transition"><Shield className="w-5 h-5" /> {t('accidentInjury')}</button>
+                <button
+                  onClick={() => {
+                    setSosModal(false);
+                    setToast({ text: 'Response noted. Helping team will contact you soon', color: 'yellow' });
+                    setTimeout(() => setToast(null), 2000);
+                  }}
+                  className="w-full flex items-center gap-2 justify-center bg-red-600 hover:bg-red-700 text-white font-semibold py-3 rounded-lg text-lg transition"
+                ><Shield className="w-5 h-5" /> {t('generalEmergency')}</button>
+                <button
+                  onClick={() => {
+                    setSosModal(false);
+                    setToast({ text: 'Response noted. Helping team will contact you soon', color: 'yellow' });
+                    setTimeout(() => setToast(null), 2000);
+                  }}
+                  className="w-full flex items-center gap-2 justify-center bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg text-lg transition"
+                ><svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 21C12 21 4 13.5 4 8.5C4 5.46243 6.46243 3 9.5 3C11.1569 3 12 4.34315 12 4.34315C12 4.34315 12.8431 3 14.5 3C17.5376 3 20 5.46243 20 8.5C20 13.5 12 21 12 21Z" /><circle cx="12" cy="8.5" r="2.5" /></svg> {t('medicalEmergency')}</button>
+                <button
+                  onClick={() => {
+                    setSosModal(false);
+                    setToast({ text: 'Response noted. Helping team will contact you soon', color: 'yellow' });
+                    setTimeout(() => setToast(null), 2000);
+                  }}
+                  className="w-full flex items-center gap-2 justify-center bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3 rounded-lg text-lg transition"
+                ><Shield className="w-5 h-5" /> {t('theftRobbery')}</button>
+                <button
+                  onClick={() => {
+                    setSosModal(false);
+                    setToast({ text: 'Response noted. Helping team will contact you soon', color: 'yellow' });
+                    setTimeout(() => setToast(null), 2000);
+                  }}
+                  className="w-full flex items-center gap-2 justify-center bg-purple-500 hover:bg-purple-600 text-white font-semibold py-3 rounded-lg text-lg transition"
+                ><AlertTriangle className="w-5 h-5" /> {t('harassmentAssault')}</button>
+                <button
+                  onClick={() => {
+                    setSosModal(false);
+                    setToast({ text: 'Response noted. Helping team will contact you soon', color: 'yellow' });
+                    setTimeout(() => setToast(null), 2000);
+                  }}
+                  className="w-full flex items-center gap-2 justify-center bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-3 rounded-lg text-lg transition"
+                ><Shield className="w-5 h-5" /> {t('accidentInjury')}</button>
               </div>
             </div>
           </div>
@@ -451,7 +505,7 @@ const TouristDashboard = () => {
               <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center mb-3">
                 <HelpCircle className="w-6 h-6" />
               </div>
-              <span className="font-semibold">{t('reportIssue')}</span>
+                <span className="font-semibold">{t('nearbyHelp')}</span>
             </button>
           </div>
         </div>

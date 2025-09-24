@@ -8,6 +8,7 @@ const TouristLogin = () => {
   const { t } = useLanguage();
   const [showPassword, setShowPassword] = useState(false);
   const [credentials, setCredentials] = useState({
+    name: '',
     email: '',
     password: ''
   });
@@ -20,7 +21,7 @@ const TouristLogin = () => {
       // Store mock tourist data in localStorage for demo
       localStorage.setItem('mockTourist', JSON.stringify({
         id: 'T001234',
-        name: 'Tanishq Mehta',
+        name: credentials.name || 'Tanishq Mehta',
         email: 'tanishqamehta1@gmail.com',
         phone: '+91 98765 43210',
         nationality: 'Indian',
@@ -29,6 +30,18 @@ const TouristLogin = () => {
       navigate('/tourist/dashboard');
     } else {
       // For any other credentials, still allow login for demo purposes
+      // Persist the typed name so it reflects on the profile/dashboard header
+      const existing = localStorage.getItem('mockTourist');
+      const existingData = existing ? JSON.parse(existing) : {};
+      const toStore = {
+        id: existingData.id || 'T001234',
+        name: credentials.name || existingData.name || 'Guest',
+        email: credentials.email || existingData.email || 'guest@example.com',
+        phone: existingData.phone || '+91 00000 00000',
+        nationality: existingData.nationality || 'Indian',
+        status: existingData.status || 'unverified'
+      };
+      localStorage.setItem('mockTourist', JSON.stringify(toStore));
       navigate('/tourist/dashboard');
     }
   };
@@ -63,6 +76,23 @@ const TouristLogin = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Full Name */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  {t('fullName')}
+                </label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    type="text"
+                    name="name"
+                    value={credentials.name}
+                    onChange={handleInputChange}
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
+                    placeholder="Enter your full name"
+                  />
+                </div>
+              </div>
               {/* Email */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">

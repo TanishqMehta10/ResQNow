@@ -6,9 +6,21 @@ import { nanoid } from 'nanoid';
 const DigitalID = () => {
   const navigate = useNavigate();
   const idData = useMemo(() => {
-    const userId = 'TID-' + nanoid(8).toUpperCase();
-    const payload = { userId, name: 'John Doe', issuedAt: Date.now() };
-    return { userId, qrPayload: JSON.stringify(payload) };
+    // Load stored tourist details from localStorage
+    const stored = localStorage.getItem('mockTourist');
+    const parsed = stored ? JSON.parse(stored) : {};
+    const ensuredUserId = parsed.id || ('TID-' + nanoid(8).toUpperCase());
+    const ensuredName = parsed.name || 'John Doe';
+    const ensuredNationality = parsed.nationality || 'Indian';
+    const payload = { userId: ensuredUserId, name: ensuredName, issuedAt: Date.now() };
+    // Persist back any generated fields
+    localStorage.setItem('mockTourist', JSON.stringify({
+      ...parsed,
+      id: ensuredUserId,
+      name: ensuredName,
+      nationality: ensuredNationality,
+    }));
+    return { userId: ensuredUserId, name: ensuredName, nationality: ensuredNationality, qrPayload: JSON.stringify(payload) };
   }, []);
 
   const qrUrl = useMemo(() => {
@@ -48,14 +60,14 @@ const DigitalID = () => {
 
                 <div className="space-y-3">
                   <div>
-                    <p className="text-2xl font-bold">John Doe</p>
+                    <p className="text-2xl font-bold">{idData.name}</p>
                     <p className="text-sm opacity-90">Tourist ID: {idData.userId}</p>
                   </div>
                   
                   <div className="flex justify-between text-sm">
                     <div>
                       <p className="opacity-75">Nationality</p>
-                      <p className="font-medium">American</p>
+                      <p className="font-medium">{idData.nationality}</p>
                     </div>
                     <div>
                       <p className="opacity-75">Valid Until</p>

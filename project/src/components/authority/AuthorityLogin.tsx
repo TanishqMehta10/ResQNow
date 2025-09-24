@@ -12,7 +12,18 @@ const AuthorityLogin = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    navigate('/authority/dashboard');
+    // Persist simple authority identity so dashboard header shows the logged-in name
+    try {
+      localStorage.setItem('authorityUser', JSON.stringify({
+        name: credentials.username || 'Admin',
+        department: credentials.department || 'authority'
+      }));
+    } catch {}
+    if (credentials.department === 'police') {
+      navigate('/police/dashboard');
+    } else {
+      navigate('/authority/dashboard');
+    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
