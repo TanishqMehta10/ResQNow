@@ -7,24 +7,26 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "start": "serve -s dist -l $PORT"
   },
   "dependencies": {
+    "@react-google-maps/api": "^2.19.1",
     "lucide-react": "^0.542.0",
+    "nanoid": "^5.0.7",
+    "qrcode": "^1.5.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^7.8.2",
-    "@react-google-maps/api": "^2.19.1",
-    "zustand": "^4.5.4",
-    "nanoid": "^5.0.7",
-    "qrcode": "^1.5.4"
-    ,"recharts": "^2.5.0"
+    "recharts": "^2.5.0",
+    "serve": "^14.2.1",
+    "zustand": "^4.5.4"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.1",
+    "@types/google.maps": "^3.55.7",
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",
-    "@types/google.maps": "^3.55.7",
     "@vitejs/plugin-react": "^4.3.1",
     "autoprefixer": "^10.4.18",
     "eslint": "^9.9.1",
