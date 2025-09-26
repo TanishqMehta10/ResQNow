@@ -1,7 +1,7 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 // navigation not used in this component
 import { useLanguage } from '../../contexts/LanguageContext';
-import { AlertTriangle, Shield, MapPin, Phone, Users, Bell, Settings, User, HelpCircle, Video, Camera, Send } from 'lucide-react';
+import { AlertTriangle, Shield, MapPin, Phone, Bell, Settings, User, HelpCircle, Video, Camera, Send } from 'lucide-react';
 import LiveMap from '../LiveMap';
 import { bus, useRealtimeStore } from '../../store/realtime';
 import { useTracking } from '../../hooks/useTracking';
@@ -23,8 +23,12 @@ const TouristDashboard = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [videoBlob, setVideoBlob] = useState<Blob | null>(null);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+  // Single preview stream & ref, with a selected camera mode ('user' = front, 'environment' = rear)
   const [videoStream, setVideoStream] = useState<MediaStream | null>(null);
   const [videoRef, setVideoRef] = useState<HTMLVideoElement | null>(null);
+  const [selectedCamera, setSelectedCamera] = useState<'user' | 'environment'>('user');
+  const touchStartX = useRef<number | null>(null);
+  const touchMoved = useRef(false);
   const [userId, setUserId] = useState<string>(() => {
     const mockTourist = localStorage.getItem('mockTourist');
     if (mockTourist) {
@@ -75,54 +79,78 @@ const TouristDashboard = () => {
     return () => { bus.off('alert:geofence', handler); bus.off('broadcast:send', onBroadcast as any); bus.off('track:target', onTrack as any); };
   }, [t]);
 
-  // Handle video element reference
+  // Attach preview stream to single video element
   useEffect(() => {
     if (videoRef && videoStream) {
       videoRef.srcObject = videoStream;
-      videoRef.play();
+      videoRef.play().catch(() => {});
     }
   }, [videoRef, videoStream]);
 
-  // Video recording functions
-  const startRecording = async () => {
+  // Helper to start a preview (no audio) for a given camera facingMode
+  const startPreview = async (camera: 'user' | 'environment') => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: 'user' }, 
-        audio: true 
-      });
-      
-      // Set the video stream for preview
+      // stop any existing preview first
+      videoStream?.getTracks().forEach(t => t.stop());
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: camera }, audio: false });
       setVideoStream(stream);
-      
-      // Set video element source when ref is available
-      if (videoRef) {
-        videoRef.srcObject = stream;
-        videoRef.play();
+      setSelectedCamera(camera);
+    } catch (error) {
+      console.error('Error starting preview for', camera, error);
+      setToast({ text: 'Unable to start camera preview. Please allow camera permission or try another device.', color: 'red' });
+      setTimeout(() => setToast(null), 3000);
+    }
+  };
+
+
+
+  // Cleanup on unmount: stop any active streams and recorder
+  useEffect(() => {
+    return () => {
+      try {
+        videoStream?.getTracks().forEach(t => t.stop());
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+          mediaRecorder.stop();
+        }
+      } catch (e) {
+        // ignore
       }
-      
+    };
+  }, [videoStream, mediaRecorder]);
+
+  // Video recording functions
+  const startRecording = async (cameraParam?: 'user' | 'environment') => {
+    const cam = cameraParam || selectedCamera;
+    try {
+      // Request audio for recording
+      // Stop current preview tracks to get a fresh stream with audio
+      videoStream?.getTracks().forEach(t => t.stop());
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: cam }, audio: true });
+
+      setVideoStream(stream);
+      setSelectedCamera(cam);
+
       const recorder = new MediaRecorder(stream);
       const chunks: BlobPart[] = [];
-      
+
       recorder.ondataavailable = (e) => {
         chunks.push(e.data);
       };
-      
+
       recorder.onstop = () => {
         const blob = new Blob(chunks, { type: 'video/webm' });
         setVideoBlob(blob);
-        // Stop the stream and clear video preview
+        // Stop the recording stream tracks
         stream.getTracks().forEach(track => track.stop());
-        setVideoStream(null);
-        if (videoRef) {
-          videoRef.srcObject = null;
-        }
+        // After recording, restart preview for that camera (without audio)
+        startPreview(cam);
       };
-      
+
       recorder.start();
       setMediaRecorder(recorder);
       setIsRecording(true);
     } catch (error) {
-      console.error('Error accessing camera:', error);
+      console.error('Error accessing camera for recording:', error);
       setToast({ text: 'Camera access denied. Please allow camera permission.', color: 'red' });
       setTimeout(() => setToast(null), 3000);
     }
@@ -133,6 +161,14 @@ const TouristDashboard = () => {
       mediaRecorder.stop();
       setIsRecording(false);
       setMediaRecorder(null);
+      // stop and clear preview stream
+      try {
+        videoStream?.getTracks().forEach(t => t.stop());
+      } catch (e) {}
+      setVideoStream(null);
+      if (videoRef) {
+        try { videoRef.srcObject = null; } catch (e) {}
+      }
     }
   };
 
@@ -316,45 +352,105 @@ const TouristDashboard = () => {
             </div>
             <div className="text-xs text-gray-500 mb-3">{t('emergencyVideoDesc')}</div>
             
-            {/* Video Preview Area */}
-            <div className="relative bg-gray-100 rounded-lg overflow-hidden" style={{ aspectRatio: '16/9' }}>
-              {videoStream && (
-                <video
-                  ref={setVideoRef}
-                  className="w-full h-full object-cover"
-                  autoPlay
-                  muted
-                  playsInline
-                />
-              )}
-              
-              {/* Recording Overlay */}
-              {isRecording && (
-                <div className="absolute top-3 left-3 flex items-center gap-2 bg-red-600 text-white px-3 py-1 rounded-full">
-                  <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-                  <span className="text-sm font-medium">REC</span>
+            {/* Single Video Preview Area with gesture to toggle camera mode */}
+            <div
+              className="relative bg-gray-100 rounded-lg overflow-hidden"
+              style={{ aspectRatio: '16/9' }}
+              onTouchStart={(e) => {
+                const x = e.touches?.[0]?.clientX ?? null;
+                touchStartX.current = x;
+                touchMoved.current = false;
+              }}
+              onTouchMove={(e) => {
+                if (touchStartX.current == null) return;
+                const x = e.touches?.[0]?.clientX ?? touchStartX.current;
+                if (Math.abs(x - touchStartX.current) > 10) touchMoved.current = true;
+              }}
+              onTouchEnd={(e) => {
+                if (touchStartX.current == null) return;
+                const x = e.changedTouches?.[0]?.clientX ?? touchStartX.current;
+                const delta = x - (touchStartX.current ?? x);
+                if (Math.abs(delta) > 50) {
+                  // swipe -> toggle camera
+                  setSelectedCamera((prev) => {
+                    const next = prev === 'user' ? 'environment' : 'user';
+                    // if preview is active, restart it with new camera
+                    if (videoStream) startPreview(next);
+                    setToast({ text: `Switched to ${next === 'user' ? 'Front' : 'Rear'} camera`, color: 'yellow' });
+                    setTimeout(() => setToast(null), 1800);
+                    return next;
+                  });
+                } else if (!touchMoved.current) {
+                  // tap -> toggle camera mode as fallback
+                  setSelectedCamera((prev) => {
+                    const next = prev === 'user' ? 'environment' : 'user';
+                    if (videoStream) startPreview(next);
+                    setToast({ text: `Switched to ${next === 'user' ? 'Front' : 'Rear'} camera`, color: 'yellow' });
+                    setTimeout(() => setToast(null), 1800);
+                    return next;
+                  });
+                }
+                touchStartX.current = null;
+                touchMoved.current = false;
+              }}
+              onMouseDown={(e) => {
+                // desktop click-drag support
+                touchStartX.current = e.clientX;
+                touchMoved.current = false;
+              }}
+              onMouseMove={(e) => {
+                if (touchStartX.current == null) return;
+                if (Math.abs(e.clientX - touchStartX.current) > 10) touchMoved.current = true;
+              }}
+              onMouseUp={(e) => {
+                if (touchStartX.current == null) return;
+                const delta = e.clientX - (touchStartX.current ?? e.clientX);
+                if (Math.abs(delta) > 50) {
+                  setSelectedCamera((prev) => {
+                    const next = prev === 'user' ? 'environment' : 'user';
+                    if (videoStream) startPreview(next);
+                    setToast({ text: `Switched to ${next === 'user' ? 'Front' : 'Rear'} camera`, color: 'yellow' });
+                    setTimeout(() => setToast(null), 1800);
+                    return next;
+                  });
+                } else if (!touchMoved.current) {
+                  setSelectedCamera((prev) => {
+                    const next = prev === 'user' ? 'environment' : 'user';
+                    if (videoStream) startPreview(next);
+                    setToast({ text: `Switched to ${next === 'user' ? 'Front' : 'Rear'} camera`, color: 'yellow' });
+                    setTimeout(() => setToast(null), 1800);
+                    return next;
+                  });
+                }
+                touchStartX.current = null;
+                touchMoved.current = false;
+              }}
+            >
+              {/* Camera mode badge */}
+              <div className="absolute top-3 left-3 z-10">
+                <div className="bg-white/80 backdrop-blur-sm px-3 py-1 rounded-full text-sm font-medium text-gray-700">
+                  {selectedCamera === 'user' ? 'Front (Selfie)' : 'Rear (Environment)'}
                 </div>
-              )}
-              
-              {/* No Video State */}
-              {!videoStream && !videoBlob && (
+              </div>
+
+              {/* Video element or placeholder */}
+              {videoStream ? (
+                <video ref={setVideoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
+              ) : (
                 <div className="absolute inset-0 flex items-center justify-center bg-gray-200">
                   <div className="text-center">
                     <Camera className="w-12 h-12 text-gray-400 mx-auto mb-2" />
                     <p className="text-gray-500 text-sm">Camera preview will appear here</p>
+                    <p className="text-xs text-gray-400 mt-2">Tap or swipe the preview to switch camera</p>
                   </div>
                 </div>
               )}
-              
-              {/* Video Captured State */}
-              {videoBlob && !isRecording && (
-                <div className="absolute inset-0 flex items-center justify-center bg-green-50">
-                  <div className="text-center">
-                    <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-2">
-                      <Video className="w-6 h-6 text-white" />
-                    </div>
-                    <p className="text-green-700 text-sm font-medium">Video Ready</p>
-                  </div>
+
+              {/* Recording overlay */}
+              {isRecording && (
+                <div className="absolute top-3 left-3 flex items-center gap-2 bg-red-600 text-white px-3 py-1 rounded-full">
+                  <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                  <span className="text-sm font-medium">REC</span>
                 </div>
               )}
             </div>
@@ -362,13 +458,20 @@ const TouristDashboard = () => {
             {/* Control Buttons */}
             <div className="space-y-2">
               {!isRecording && !videoBlob && (
-                <button
-                  onClick={startRecording}
-                  className="w-full flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors"
-                >
-                  <Camera className="w-4 h-4" />
-                  {t('captureVideo')}
-                </button>
+                <div className="space-y-2">
+                  <div className="text-xs text-gray-500 text-center">Tap or swipe the preview to switch between front & rear cameras.</div>
+
+                  <button
+                    onClick={async () => {
+                      // Start recording immediately from selected camera (video+audio)
+                      await startRecording(selectedCamera);
+                    }}
+                    className="w-full flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors"
+                  >
+                    <Camera className="w-4 h-4" />
+                    {t('captureVideo')}
+                  </button>
+                </div>
               )}
               
               {isRecording && (

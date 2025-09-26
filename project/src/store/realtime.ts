@@ -6,6 +6,7 @@ type Events = {
   'alert:geofence': { userId: string; zoneId: string; level: 'enter' | 'exit'; timestamp: number };
   'broadcast:send': { id: string; title?: string; message: string; area?: string; severity?: 'Info' | 'Advisory' | 'Warning' | 'Critical'; timestamp: number };
   'track:target': { userId: string; status: 'start' | 'stop'; reason?: string; timestamp: number };
+  'emergencyVideo': { id: string; touristId: string; touristName?: string; timestamp: number; location: { lat: number; lng: number }; videoUrl: string; status: string; touristEmail?: string; touristPhone?: string; touristNationality?: string };
 };
 
 type Handler<T> = (event: T) => void;
